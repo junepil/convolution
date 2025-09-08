@@ -3,3 +3,6 @@ conv.dSYM
 *.out
 .vscode
 conv
+*.pdf
+*.png
+*.log
