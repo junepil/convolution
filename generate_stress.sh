@@ -1,11 +1,11 @@
-mkdir -p stress
+mkdir -p stress_result
 #!/bin/bash
-for i in 100 1000 10000 100000; do
+for i in 100 1000 10000 100000 1000000; do
   echo "Generating Slurm script for ${i}x${i} stress test"
   
   cat > "job_${i}x${i}.sh" << EOF
 #!/bin/bash
-#SBATCH --job-name=conv2d_${i}
+#SBATCH --job-name=${i}_s
 #SBATCH --cpus-per-task=1
 #SBATCH --time=00:60:00
 #SBATCH --partition=cits3402

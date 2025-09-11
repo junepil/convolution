@@ -1,11 +1,11 @@
-mkdir -p parallel
+mkdir -p parallel_result
 #!/bin/bash
 for i in 1 2 4 8 16 32 64; do
   echo "Generating Slurm script for ${i} threads test"
   
   cat > "job_${i}threads.sh" << EOF
 #!/bin/bash
-#SBATCH --job-name=${i}threads_conv
+#SBATCH --job-name=${i}_th
 #SBATCH --cpus-per-task=${i}
 #SBATCH --time=00:10:00
 #SBATCH --partition=cits3402

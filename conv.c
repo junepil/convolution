@@ -74,7 +74,7 @@ void conv2d(
 
 #ifdef HPC
   double tik = omp_get_wtime();
-#pragma omp parallel for schedule(guided, 1)
+#pragma omp parallel for schedule(guided)
 #endif
   for (int64_t i = 0; i < H; ++i) {
     for (int64_t j = 0; j < W; ++j) {
@@ -105,8 +105,8 @@ void conv2d(
 #endif
 }
 
-int64_t main(int64_t argc, char** argv) {
-  int64_t opt, opt_idx;
+int main(int argc, char** argv) {
+  int opt, opt_idx;
   char *f_path = NULL, *g_path = NULL, *o_path = NULL;
   int64_t H = 0, W = 0, kH = 0 , kW = 0;
 
