@@ -29,13 +29,29 @@ test: $(TARGET)
 	@echo "Running local test"
 	@./$(TARGET) -W 100 -H 100 -kH 3 -kW 3 -o 100x100_3x3.txt
 
+# 포괄적 테스트 실행 (Python 테스트 스위트)
+test-comprehensive: $(TARGET)
+	@echo "Running comprehensive test suite"
+	@cd test && python3 main.py
+
+# 포괄적 테스트 실행 (데이터 보존)
+test-comprehensive-keep: $(TARGET)
+	@echo "Running comprehensive test suite (keeping test data)"
+	@cd test && python3 main.py --keep-data
+
+# 빠른 테스트 (기본 기능만)
+test-quick: $(TARGET)
+	@echo "Running quick functionality test"
+	@./$(TARGET) -f f0.txt -g g0.txt -o quick_test_output.txt
+	@echo "Quick test completed - check quick_test_output.txt"
+
 # HPC 테스트 실행
 test-hpc: hpc
-	@echo "Generating Slurm script for 100x100 hpc test"
+	@echo "Generating Slurm script for 10000x10000 hpc test"
 	@echo "#!/bin/bash" > job_100.sh
 	@echo "#SBATCH --job-name=conv2d" >> job_100.sh
 	@echo "#SBATCH --cpus-per-task=1" >> job_100.sh
-	@echo "#SBATCH --time=00:60:00" >> job_100.sh
+	@echo "#SBATCH --time=00:10:00" >> job_100.sh
 	@echo "#SBATCH --partition=cits3402" >> job_100.sh
 	@echo "#SBATCH --output=test_result.txt" >> job_100.sh
 	@echo "" >> job_100.sh
@@ -56,21 +72,25 @@ clean:
 	@echo "Cleaning up..."
 	@rm -f $(TARGET) $(TARGET)_hpc
 	@rm -f *.o *.out output*.txt job_*.sh
-	@rm -f generate*.sh
 	@rm -f result*.txt output*.log
 	@rm -f gmon.out
+	@rm -f quick_test_output.txt
+	@rm -rf test/test_data
 
 # 도움말
 help:
 	@echo "Available targets:"
-	@echo "  all          - Build standard version (no OpenMP)"
-	@echo "  hpc          - Build HPC version with OpenMP"
-	@echo "  test         - Run local test"
-	@echo "  test-hpc     - Run HPC test on HPC"
-	@echo "  stress-hpc   - Run stress test"
-	@echo "  parallel-hpc - Run parallel test"
-	@echo "  clean        - Remove all generated files"
-	@echo "  help         - Show this help"
+	@echo "  all                - Build standard version (no OpenMP)"
+	@echo "  hpc                - Build HPC version with OpenMP"
+	@echo "  test               - Run basic local test"
+	@echo "  test-quick         - Run quick functionality test with existing files"
+	@echo "  test-comprehensive - Run comprehensive test suite (all edge cases)"
+	@echo "  test-comprehensive-keep - Run comprehensive test keeping generated data"
+	@echo "  test-hpc           - Run HPC test on HPC cluster"
+	@echo "  stress-hpc         - Run stress test on HPC"
+	@echo "  parallel-hpc       - Run parallel test on HPC"
+	@echo "  clean              - Remove all generated files"
+	@echo "  help               - Show this help"
 
 # 가상 타겟 (파일이 아닌 명령)
-.PHONY: all hpc test test-hpc benchmark slurm-script clean help parallel-hpc
+.PHONY: all hpc test test-quick test-comprehensive test-comprehensive-keep test-hpc benchmark slurm-script clean help parallel-hpc stress-hpc
