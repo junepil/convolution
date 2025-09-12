@@ -8,3 +8,5 @@ conv
 *.log
 performance
 stress
+*.zip
+.DS_Store

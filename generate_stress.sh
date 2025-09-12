@@ -1,3 +1,4 @@
+# Junepil Lee 25097868
 mkdir -p stress_result
 #!/bin/bash
 for i in 100 1000 10000 100000 1000000; do

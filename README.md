@@ -3,7 +3,6 @@ This repository contains the code for the matrix parallel convolution library. T
 ## Structure
 The repository is organized as follows:
 - `conv.c`: The main file containing the convolution function.
-- `test/`: The test directory containing the test code.
 - `makefile`: The makefile for the project.
 
 ## How to run the code

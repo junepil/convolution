@@ -1,4 +1,4 @@
-# Makefile for HPC Convolution Assignment
+# Junepil Lee 25097868
 # 컴파일러 설정
 CC = gcc
 CFLAGS = -O3
@@ -29,22 +29,6 @@ test: $(TARGET)
 	@echo "Running local test"
 	@./$(TARGET) -W 100 -H 100 -kH 3 -kW 3 -o 100x100_3x3.txt
 
-# 포괄적 테스트 실행 (Python 테스트 스위트)
-test-comprehensive: $(TARGET)
-	@echo "Running comprehensive test suite"
-	@cd test && python3 main.py
-
-# 포괄적 테스트 실행 (데이터 보존)
-test-comprehensive-keep: $(TARGET)
-	@echo "Running comprehensive test suite (keeping test data)"
-	@cd test && python3 main.py --keep-data
-
-# 빠른 테스트 (기본 기능만)
-test-quick: $(TARGET)
-	@echo "Running quick functionality test"
-	@./$(TARGET) -f f0.txt -g g0.txt -o quick_test_output.txt
-	@echo "Quick test completed - check quick_test_output.txt"
-
 # HPC 테스트 실행
 test-hpc: hpc
 	@echo "Generating Slurm script for 10000x10000 hpc test"
@@ -71,10 +55,9 @@ parallel-hpc: hpc
 clean:
 	@echo "Cleaning up..."
 	@rm -f $(TARGET) $(TARGET)_hpc
-	@rm -f *.o *.out output*.txt job_*.sh
-	@rm -f result*.txt output*.log
+	@rm -f *.o *.out job_*.sh
+	@rm -f *.txt *.log
 	@rm -f gmon.out
-	@rm -f quick_test_output.txt
 	@rm -rf test/test_data
 
 # 도움말
@@ -83,9 +66,6 @@ help:
 	@echo "  all                - Build standard version (no OpenMP)"
 	@echo "  hpc                - Build HPC version with OpenMP"
 	@echo "  test               - Run basic local test"
-	@echo "  test-quick         - Run quick functionality test with existing files"
-	@echo "  test-comprehensive - Run comprehensive test suite (all edge cases)"
-	@echo "  test-comprehensive-keep - Run comprehensive test keeping generated data"
 	@echo "  test-hpc           - Run HPC test on HPC cluster"
 	@echo "  stress-hpc         - Run stress test on HPC"
 	@echo "  parallel-hpc       - Run parallel test on HPC"
@@ -93,4 +73,4 @@ help:
 	@echo "  help               - Show this help"
 
 # 가상 타겟 (파일이 아닌 명령)
-.PHONY: all hpc test test-quick test-comprehensive test-comprehensive-keep test-hpc benchmark slurm-script clean help parallel-hpc stress-hpc
+.PHONY: all hpc test test-hpc benchmark clean help parallel-hpc stress-hpc
