@@ -24,48 +24,21 @@ hpc: $(SOURCE)
 	@echo "Building HPC version with OpenMP"
 	@$(CC) $(CFLAGS) $(HPC_FLAGS) $(SOURCE) -o $(TARGET)_hpc $(SLURM_FLAGS)
 
+mpi: $(SOURCE)
+	@echo "Building MPI version"
+	@mpicc -o $(TARGET) -DDEBUG $(SOURCE)
+
 # 테스트 실행 (로컬)
 test: $(TARGET)
 	@echo "Running local test"
 	@./$(TARGET) -W 100 -H 100 -kH 3 -kW 3 -o 100x100_3x3.txt
 
-# 포괄적 테스트 실행 (Python 테스트 스위트)
-test-comprehensive: $(TARGET)
-	@echo "Running comprehensive test suite"
-	@cd test && python3 main.py
-
-# 포괄적 테스트 실행 (데이터 보존)
-test-comprehensive-keep: $(TARGET)
-	@echo "Running comprehensive test suite (keeping test data)"
-	@cd test && python3 main.py --keep-data
-
-# 빠른 테스트 (기본 기능만)
-test-quick: $(TARGET)
-	@echo "Running quick functionality test"
-	@./$(TARGET) -f f0.txt -g g0.txt -o quick_test_output.txt
-	@echo "Quick test completed - check quick_test_output.txt"
-
-# HPC 테스트 실행
-test-hpc: hpc
-	@echo "Generating Slurm script for 10000x10000 hpc test"
-	@echo "#!/bin/bash" > job_100.sh
-	@echo "#SBATCH --job-name=conv2d" >> job_100.sh
-	@echo "#SBATCH --cpus-per-task=1" >> job_100.sh
-	@echo "#SBATCH --time=00:10:00" >> job_100.sh
-	@echo "#SBATCH --partition=cits3402" >> job_100.sh
-	@echo "#SBATCH --output=test_result.txt" >> job_100.sh
-	@echo "" >> job_100.sh
-	@echo "module load gcc" >> job_100.sh
-	@echo "./$(TARGET)_hpc -W 10000 -H 10000 -kH 3 -kW 3 -o test.txt" >> job_100.sh
-	sbatch job_100.sh
-# Slurm 작업 제출용 스크립트 생성
-stress-hpc: hpc
-	@chmod +x generate_stress.sh
-	@./generate_stress.sh
-
-parallel-hpc: hpc
-	@chmod +x generate_parallel.sh
-	@./generate_parallel.sh
+test-mpi: mpi
+	@echo "Running MPI test"
+	@echo "Test 1"
+	@mpiexec -n 1 $(TARGET) -f test/data/f1.txt -g test/data/g1.txt -sH 3 -sW 2 -o mpi_test1.txt
+	@echo "Test 2"
+	@mpiexec -n 1 $(TARGET) -W 1000 -H 1000 -kW 3 -kH 3 -o mpi_test2.txt 
 
 # 정리
 clean:
@@ -76,21 +49,6 @@ clean:
 	@rm -f gmon.out
 	@rm -f quick_test_output.txt
 	@rm -rf test/test_data
-
-# 도움말
-help:
-	@echo "Available targets:"
-	@echo "  all                - Build standard version (no OpenMP)"
-	@echo "  hpc                - Build HPC version with OpenMP"
-	@echo "  test               - Run basic local test"
-	@echo "  test-quick         - Run quick functionality test with existing files"
-	@echo "  test-comprehensive - Run comprehensive test suite (all edge cases)"
-	@echo "  test-comprehensive-keep - Run comprehensive test keeping generated data"
-	@echo "  test-hpc           - Run HPC test on HPC cluster"
-	@echo "  stress-hpc         - Run stress test on HPC"
-	@echo "  parallel-hpc       - Run parallel test on HPC"
-	@echo "  clean              - Remove all generated files"
-	@echo "  help               - Show this help"
 
 # 가상 타겟 (파일이 아닌 명령)
 .PHONY: all hpc test test-quick test-comprehensive test-comprehensive-keep test-hpc benchmark slurm-script clean help parallel-hpc stress-hpc
