@@ -3,6 +3,7 @@
 #include <getopt.h>
 #include <string.h>
 #include <mpi.h>
+#include <omp.h>
 
 enum
 {
@@ -92,8 +93,6 @@ Matrix conv2d(
     int64_t start_offset
 )
 {   
-  printf("start_offset: %lld\n", start_offset);
-
   int64_t diff_H = (int64_t)(kernel.H / 2);
   int64_t diff_W = (int64_t)(kernel.W / 2);
   
@@ -104,6 +103,9 @@ Matrix conv2d(
   Matrix output = create_matrix(output_height, output_width);
   
   // The main loop now starts from the corrected `first_i`.
+#ifdef HPC
+  #pragma omp parallel for collapse(2)
+#endif
   for (int64_t i = start_offset; i < input.H; i += stride_height) {
     for (int64_t j = 0; j < input.W; j += stride_width) {
       float local_sum = 0.0;

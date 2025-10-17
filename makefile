@@ -28,6 +28,11 @@ mpi: $(SOURCE)
 	@echo "Building MPI version"
 	@mpicc -o $(TARGET) -DDEBUG $(SOURCE)
 
+mpi-hpc: $(SOURCE)
+	@echo "Building MPI version"
+	@mpicc $(HPC_FLAGS) -o $(TARGET) $(SOURCE) $(SLURM_FLAGS)
+
+
 # 테스트 실행 (로컬)
 test: $(TARGET)
 	@echo "Running local test"
@@ -35,10 +40,11 @@ test: $(TARGET)
 
 test-mpi: mpi
 	@echo "Running MPI test"
-	@echo "Test 1"
-	@mpiexec -n 1 $(TARGET) -f test/data/f1.txt -g test/data/g1.txt -sH 3 -sW 2 -o mpi_test1.txt
-	@echo "Test 2"
-	@mpiexec -n 1 $(TARGET) -W 1000 -H 1000 -kW 3 -kH 3 -o mpi_test2.txt 
+	@mpiexec -n 4 $(TARGET) -f test/data/f4.txt -g test/data/g4.txt -o mpi_test4.txt
+
+test-mpi-hpc: mpi-hpc
+	@echo "Running MPI & OpenMP test"
+	@mpiexec -n 4 $(TARGET) -W 100 -H 100 -kH 3 -kW 3 -sH 2 -sW 2 -o mpi_hpc_test.txt
 
 # 정리
 clean:
