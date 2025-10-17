@@ -18,8 +18,7 @@ typedef struct {
 } Matrix;
 
 void free_matrix(Matrix mat) {
-  for (int64_t i = 0; i < mat.H; ++i)
-    free(mat.data[i]);
+  free(mat.data[0]);
   free(mat.data);
 }
 
@@ -28,8 +27,8 @@ Matrix create_matrix(int64_t H, int64_t W) {
   mat.H = H;
   mat.W = W;
   mat.data = (float **)malloc(sizeof(float *) * H);
+  mat.data[0] = (float *)malloc(sizeof(float) * H * W);
   for (int64_t i = 0; i < H; ++i) {
-    mat.data[i] = (float *)malloc(sizeof(float) * W);
     for (int64_t j = 0; j < W; ++j) {
       mat.data[i][j] = rand() / (float)(RAND_MAX + 1.0);
     }
@@ -40,8 +39,7 @@ Matrix create_matrix(int64_t H, int64_t W) {
 void write_matrix(char *path, Matrix mat) {
   FILE* o_file = fopen(path, "w+");
   fprintf(o_file, "%lld %lld\n", mat.H, mat.W);
-  for (int64_t i = 0; i < mat.H; ++i)
-  {
+  for (int64_t i = 0; i < mat.H; ++i) {
     for (int64_t j = 0; j < mat.W; ++j) {
       fprintf(o_file, "%.3f ", mat.data[i][j]);
     }
@@ -51,12 +49,11 @@ void write_matrix(char *path, Matrix mat) {
 }
 
 Matrix read_matrix(char *path) {
-  Matrix mat = {0};
+  int64_t H, W;
   FILE *fp = fopen(path, "r");
-  fscanf(fp, "%lld %lld", &mat.H, &mat.W);
-  mat.data = (float**)malloc(mat.H * sizeof(float*));
+  fscanf(fp, "%lld %lld", &H, &W);
+  Matrix mat = create_matrix(H, W);
   for (int64_t i = 0; i < mat.H; i++) {
-    mat.data[i] = (float *)malloc(mat.W * sizeof(float));
     for (int64_t j = 0; j < mat.W; j++) {
       fscanf(fp, "%f", &mat.data[i][j]);
     }
