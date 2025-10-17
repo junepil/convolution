@@ -6,6 +6,20 @@
 
 enum
 {
+  META_TAG = 0,
+  DATA_TAG
+};
+
+enum
+{
+  KERNEL_H = 0,
+  KERNEL_W,
+  STRIDE_H,
+  STRIDE_W
+};
+
+enum
+{
   OPT_kH = 1000,
   OPT_kW,
   OPT_sH,
@@ -18,6 +32,8 @@ typedef struct {
 } Matrix;
 
 void free_matrix(Matrix mat) {
+  if(!mat.data)
+    return;
   free(mat.data[0]);
   free(mat.data);
 }
@@ -26,8 +42,13 @@ Matrix create_matrix(int64_t H, int64_t W) {
   Matrix mat = {0};
   mat.H = H;
   mat.W = W;
+  
+  float *data_block = (float *)malloc(sizeof(float) * H * W);
   mat.data = (float **)malloc(sizeof(float *) * H);
-  mat.data[0] = (float *)malloc(sizeof(float) * H * W);
+  for (int64_t i = 0; i < H; ++i) {
+    mat.data[i] = &(data_block[i * W]);
+  }
+
   for (int64_t i = 0; i < H; ++i) {
     for (int64_t j = 0; j < W; ++j) {
       mat.data[i][j] = rand() / (float)(RAND_MAX + 1.0);
@@ -104,72 +125,167 @@ Matrix conv2d(
 }
 
 int main(int argc, char** argv) {
+  int rank, size;
   MPI_Init(&argc, &argv);
-  int opt, opt_idx;
-  char *f_path = NULL, *g_path = NULL, *o_path = NULL;
-  int64_t H = 0, W = 0, kH = 0 , kW = 0, sH = 1, sW = 1;
+  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+  MPI_Comm_size(MPI_COMM_WORLD, &size);
 
-  const struct option longopts[] = {
-      {"kH", required_argument, NULL, OPT_kH},
-      {"kW", required_argument, NULL, OPT_kW},
-      {"sH", required_argument, NULL, OPT_sH},
-      {"sW", required_argument, NULL, OPT_sW},
-      {0, 0, 0, 0}};
-
-  while (1)
-  {
-    opt = getopt_long_only(argc, argv, ":H:W:f:g:o:", longopts, &opt_idx);
-    if(opt == -1)
-      break;
-    switch (opt) {
-    case 'H': H = atoll(optarg); break;
-    case 'W': W = atoll(optarg); break;
-    case OPT_kH: kH = atoll(optarg); break;
-    case OPT_kW: kW = atoll(optarg); break;
-    case OPT_sH: sH = atoll(optarg); break;
-    case OPT_sW: sW = atoll(optarg); break;
-    case 'f': f_path = strdup(optarg); break;
-    case 'g': g_path = strdup(optarg); break;
-    case 'o': o_path = strdup(optarg); break;
-    default: break;
-    }
-  }
-
-  Matrix input, kernel;
-  FILE *o_file = NULL;
+  if(rank == 0) { // root
+    int opt, opt_idx;
+    char *f_path = NULL, *g_path = NULL, *o_path = NULL;
+    int64_t H = 0, W = 0, kH = 0 , kW = 0, sH = 1, sW = 1;
   
-  if(H && W && kH && kW) {
-    input = create_matrix(H, W);
-    kernel = create_matrix(kH, kW);
-  }
-  else
-  {
+    const struct option longopts[] = {
+        {"kH", required_argument, NULL, OPT_kH},
+        {"kW", required_argument, NULL, OPT_kW},
+        {"sH", required_argument, NULL, OPT_sH},
+        {"sW", required_argument, NULL, OPT_sW},
+        {0, 0, 0, 0}};
+  
+    while (1)
+    {
+      opt = getopt_long_only(argc, argv, ":H:W:f:g:o:", longopts, &opt_idx);
+      if(opt == -1)
+        break;
+      switch (opt) {
+      case 'H': H = atoll(optarg); break;
+      case 'W': W = atoll(optarg); break;
+      case OPT_kH: kH = atoll(optarg); break;
+      case OPT_kW: kW = atoll(optarg); break;
+      case OPT_sH: sH = atoll(optarg); break;
+      case OPT_sW: sW = atoll(optarg); break;
+      case 'f': f_path = strdup(optarg); break;
+      case 'g': g_path = strdup(optarg); break;
+      case 'o': o_path = strdup(optarg); break;
+      default: break;
+      }
+    }
+  
+    Matrix input, kernel;
+    FILE *o_file = NULL;
+    
+    if(H && W && kH && kW) {
+      input = create_matrix(H, W);
+      kernel = create_matrix(kH, kW);
+    }
+    else
+    {
+      if(f_path)
+        input = read_matrix(f_path);
+      if(g_path)
+        kernel = read_matrix(g_path);
+    }
+  
+    // parallelize here
+    // Matrix output = conv2d(input, kernel, sH, sW);
+    int64_t meta[4] = {kernel.H, kernel.W, sH, sW};
+    MPI_Bcast(meta, 4, MPI_INT64_T, 0, MPI_COMM_WORLD);
+    MPI_Bcast(kernel.data[0], kernel.H * kernel.W, MPI_FLOAT, 0, MPI_COMM_WORLD);
+
+    int64_t diff = kernel.H / 2;
+    int64_t output_height = (input.H + sH - 1) / sH;
+    int64_t output_width = (input.W + sW - 1) / sW;
+    Matrix output = create_matrix(output_height, output_width);
+
+    int64_t rows_per_proc = output.H / size;
+    int64_t remainder = output.H % size;
+
+    int64_t current_output_row = 0;
+    for (int i = 0; i < size; ++i)
+    {
+      int64_t output_rows_for_this_proc = rows_per_proc + ((i < remainder) ? 1 : 0);
+      if(output_rows_for_this_proc == 0)
+        continue;
+
+      int64_t input_start_row = current_output_row * sH;
+      int64_t input_end_row = (current_output_row + output_rows_for_this_proc - 1) * sH;
+
+      int64_t send_start_row = (input_start_row - diff > 0) ? (input_start_row - diff) : 0;
+      int64_t send_end_row = (input_end_row + diff) < input.H ? (input_end_row + diff) : input.H - 1;
+
+      int64_t send_row_count = send_end_row - send_start_row;
+      
+      if(i == 0) {
+        Matrix local_input = create_matrix(send_row_count, input.W);
+        memcpy(local_input.data[0], input.data[0], send_row_count * input.W * sizeof(int64_t));
+
+        Matrix local_output = conv2d(local_input, kernel, sH, sW);
+        memcpy(output.data[current_output_row], local_output.data[0], local_output.H * local_output.W * sizeof(float));
+      }
+      else
+      {
+        int64_t input_meta[2] = {send_row_count, input.W};
+        MPI_Send(input_meta, 2, MPI_INT64_T, i, META_TAG, MPI_COMM_WORLD);
+        MPI_Send(input.data[send_start_row], send_row_count * input.W, MPI_FLOAT, i, DATA_TAG, MPI_COMM_WORLD);
+      }
+      current_output_row += output_rows_for_this_proc;
+    }
+
+    current_output_row = 0; 
+    for (int i = 0; i < size; ++i) {
+      int64_t output_rows_for_this_proc = rows_per_proc + ((i < remainder) ? 1 : 0);
+      if (output_rows_for_this_proc == 0) {
+        continue;
+      }
+
+      if (i == 0) {
+        continue;
+      }
+
+      float* receive_buffer = output.data[current_output_row];
+      int64_t elements_to_receive = output_rows_for_this_proc * output_width;
+
+      MPI_Recv(receive_buffer,elements_to_receive,MPI_FLOAT,i,DATA_TAG,MPI_COMM_WORLD,MPI_STATUS_IGNORE);       
+
+      current_output_row += output_rows_for_this_proc;
+    }
+
+    if (f_path && H && W && g_path && kH && kW)
+    {
+      write_matrix(f_path, input);
+      write_matrix(g_path, kernel);
+    }
+  
+    if(o_path)
+      write_matrix(o_path, output);
+  
     if(f_path)
-      input = read_matrix(f_path);
+      free(f_path);
     if(g_path)
-      kernel = read_matrix(g_path);
+      free(g_path);
+    if(o_path)
+      free(o_path);
+    
+    free_matrix(input);
+    free_matrix(kernel);
+    free_matrix(output);
+  } else { // worker
+    int64_t meta[4];
+    int64_t kernel_h, kernel_w, stride_h, stride_w;
+    MPI_Bcast(meta, 4, MPI_INT64_T, 0, MPI_COMM_WORLD);
+    kernel_h = meta[KERNEL_H];
+    kernel_w = meta[KERNEL_W];
+    stride_h = meta[STRIDE_H];
+    stride_w = meta[STRIDE_W];
+    Matrix kernel = create_matrix(kernel_h, kernel_w);
+    MPI_Bcast(kernel.data[0], kernel_h * kernel_w, MPI_FLOAT, 0, MPI_COMM_WORLD);
+
+    int64_t input_meta[2];
+    int64_t input_h, input_w;
+    MPI_Recv(input_meta, 2, MPI_INT64_T, 0, META_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+    input_h = input_meta[0];
+    input_w = input_meta[1];
+    Matrix local_input = create_matrix(input_h, input_w);
+    MPI_Recv(local_input.data[0], input_h * input_w, MPI_FLOAT, 0, DATA_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
+    Matrix local_output = conv2d(local_input, kernel, stride_h, stride_w);
+    MPI_Send(local_output.data, local_output.H * local_output.W, MPI_FLOAT, 0, DATA_TAG, MPI_COMM_WORLD);
+
+    free_matrix(local_input);
+    free_matrix(kernel);
+    free_matrix(local_output);
   }
 
-  Matrix output = conv2d(input, kernel, sH, sW);
- 
-  if(f_path && H && W && g_path && kH && kW) {
-    write_matrix(f_path, input);
-    write_matrix(g_path, kernel);
-  }
-
-  if(o_path)
-    write_matrix(o_path, output);
-
-  if(f_path)
-    free(f_path);
-  if(g_path)
-    free(g_path);
-  if(o_path)
-    free(o_path);
-
-  free_matrix(input);
-  free_matrix(kernel);
-  free_matrix(output);
   MPI_Finalize();
   return 0;
 }
