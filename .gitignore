@@ -1,4 +1,5 @@
 conv.dSYM
+.DS_Store
 *.txt
 *.out
 .vscode
