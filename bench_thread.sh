@@ -22,7 +22,7 @@ for threads in "${THREADS[@]}"; do
 #SBATCH --time=00:15:00
 #SBATCH --output=thread_bench/threads_${threads}.out
 
-srun ./conv -W ${FIXED_MATRIX_SIZE} -H ${FIXED_MATRIX_SIZE} -kH ${FIXED_KERNEL_SIZE} -kW ${FIXED_KERNEL_SIZE} -sH ${FIXED_STRIDE} -sW ${FIXED_STRIDE} -o thread_bench/threads_${threads}.txt
+srun ./conv -W ${FIXED_MATRIX_SIZE} -H ${FIXED_MATRIX_SIZE} -kH ${FIXED_KERNEL_SIZE} -kW ${FIXED_KERNEL_SIZE} -sH ${FIXED_STRIDE} -sW ${FIXED_STRIDE}
 EOF
   chmod +x "thread_bench/threads_${threads}.sh"
   echo "Submitting benchmark for ${threads} threads"

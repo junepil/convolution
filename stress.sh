@@ -17,7 +17,7 @@ for i in 100 1000 10000 100000 1000000; do
 #SBATCH --time=00:15:00
 #SBATCH --output=stress/rows_${i}x10000_${kernel}x${kernel}k.out
 
-srun ./conv -W 10000 -H ${i} -kH ${kernel} -kW ${kernel} -o stress/rows_${i}x10000_${kernel}x${kernel}k.txt
+srun ./conv -W 10000 -H ${i} -kH ${kernel} -kW ${kernel}
 EOF
     chmod +x "stress/rows_${i}x10000_${kernel}x${kernel}k.sh"
     echo "Submitting stress for rows ${i}x10000 with ${kernel}x${kernel} kernel"
@@ -41,7 +41,7 @@ for i in 100 1000 10000 100000 1000000; do
 #SBATCH --time=00:15:00
 #SBATCH --output=stress/cols_10000x${i}_${kernel}x${kernel}k.out
 
-srun ./conv -W ${i} -H 10000 -kH ${kernel} -kW ${kernel} -o stress/cols_10000x${i}_${kernel}x${kernel}k.txt
+srun ./conv -W ${i} -H 10000 -kH ${kernel} -kW ${kernel}
 EOF
     chmod +x "stress/cols_10000x${i}_${kernel}x${kernel}k.sh"
     echo "Submitting stress for columns 10000x${i} with ${kernel}x${kernel} kernel"

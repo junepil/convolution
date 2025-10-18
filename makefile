@@ -41,10 +41,15 @@ test-mpi-omp: mpi-omp
 	@mpiexec -n 4 $(TARGET) -W 100 -H 100 -kH 3 -kW 3 -sH 2 -sW 2 -o mpi_hpc_test.txt
 
 # Bench(remote)
-bench: build-mpi-omp
-	@echo "Running benchmark"
-	@chmod 744 bench.sh
-	@./bench.sh
+bench-core: build-mpi-omp
+	@echo "Running core benchmark"
+	@chmod 744 bench_core.sh
+	@./bench_core.sh
+
+bench-thread: build-mpi-omp
+	@echo "Running thread benchmark"
+	@chmod 744 bench_thread.sh
+	@./bench_thread.sh
 
 stress: build-mpi-omp
 	@echo "Running stress test"
@@ -56,7 +61,7 @@ clean:
 	@echo "Cleaning up..."
 	@rm -f $(TARGET) $(TARGET)_hpc
 	@rm -f *.o *.out
-	@rm -rf stress bench
+	@rm -rf stress bench thread_bench
 	@rm -f gmon.out
 
 # 가상 타겟 (파일이 아닌 명령)

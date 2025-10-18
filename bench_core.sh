@@ -25,7 +25,7 @@ for cores in "${CORES[@]}"; do
 #SBATCH --time=00:15:00
 #SBATCH --output=bench/${cores}cores_${kernel}x${kernel}k_${stride}x${stride}s.out
 
-srun ./conv -W 10000 -H 10000 -kH ${kernel} -kW ${kernel} -sH ${stride} -sW ${stride} -o bench/${cores}cores_${kernel}x${kernel}k_${stride}x${stride}s.txt
+srun ./conv -W 10000 -H 10000 -kH ${kernel} -kW ${kernel} -sH ${stride} -sW ${stride}
 EOF
       chmod +x "bench/${cores}cores_${kernel}x${kernel}k_${stride}x${stride}s.sh"
       echo "Submitting bench for ${cores} cores, ${kernel}x${kernel} kernel, stride ${stride}x${stride}"
