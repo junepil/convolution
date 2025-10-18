@@ -90,7 +90,8 @@ Matrix conv2d(
     Matrix kernel,
     int64_t stride_height,
     int64_t stride_width,
-    int64_t start_offset
+    int64_t start_offset,
+    int64_t *flops_count
 )
 {   
   int64_t diff_H = (int64_t)(kernel.H / 2);
@@ -102,9 +103,13 @@ Matrix conv2d(
 
   Matrix output = create_matrix(output_height, output_width);
   
+  // Initialize FLOPS counter
+  *flops_count = 0;
+  int64_t total_flops = 0;
+  
   // The main loop now starts from the corrected `first_i`.
 #ifdef HPC
-  #pragma omp parallel for collapse(2)
+  #pragma omp parallel for collapse(2) reduction(+:total_flops) schedule(static, 16)
 #endif
   for (int64_t i = start_offset; i < input.H; i += stride_height) {
     for (int64_t j = 0; j < input.W; j += stride_width) {
@@ -130,19 +135,30 @@ Matrix conv2d(
             continue;
           }
           local_sum += f_row[j + l] * g_row[kernel_col];
+          total_flops += 2; // 1 multiply + 1 add per iteration
         }
       }
       output.data[(i - start_offset) / stride_height][j / stride_width] = local_sum;
     }
   }
+  
+  // Set the final FLOPS count
+  *flops_count = total_flops;
   return output;
 }
 
 int main(int argc, char** argv) {
   int rank, size;
+  double tik, tok, total_start, total_end;
+  double computation_time, local_flops;
+
   MPI_Init(&argc, &argv);
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   MPI_Comm_size(MPI_COMM_WORLD, &size);
+  
+  // Start total walltime measurement
+  total_start = MPI_Wtime();
+  MPI_Barrier(MPI_COMM_WORLD);
 
   if(rank != 0) { 
     // Receive broadcasted kernel info
@@ -171,8 +187,15 @@ int main(int argc, char** argv) {
     int64_t next_hop = ((int64_t)(border + stride_h - 1) / stride_h) * stride_h;
     int64_t offset = next_hop - send_start_row;
 
-    Matrix local_output = conv2d(local_input, kernel, stride_h, stride_w, offset);
+    tik = MPI_Wtime();
+
+    int64_t local_flops = 0;
+    Matrix local_output = conv2d(local_input, kernel, stride_h, stride_w, offset, &local_flops);
     int64_t expected_elements = expected_output_rows * local_output.W;
+
+    tok = MPI_Wtime();
+    
+    computation_time = tok - tik;
 
     MPI_Send(local_output.data[0], expected_elements, MPI_FLOAT, 0, DATA_TAG, MPI_COMM_WORLD);
     free_matrix(local_input);
@@ -242,8 +265,14 @@ int main(int argc, char** argv) {
         Matrix local_input = create_matrix(send_row_count, input.W);
         memcpy(local_input.data[0], input.data[send_start_row], send_row_count * input.W * sizeof(float));
 
-        Matrix local_output = conv2d(local_input, kernel, sH, sW, send_start_row);        
+        tik = MPI_Wtime();
+
+        int64_t local_flops = 0;
+        Matrix local_output = conv2d(local_input, kernel, sH, sW, send_start_row, &local_flops);        
         memcpy(output.data[current_output_row], local_output.data[0], local_output.H * local_output.W * sizeof(float));
+
+        tok = MPI_Wtime();
+        computation_time = tok - tik;
 
         free_matrix(local_input);
         free_matrix(local_output);
@@ -271,6 +300,21 @@ int main(int argc, char** argv) {
     free_matrix(input);
     free_matrix(kernel);
     free_matrix(output);
+  }
+  
+  // Synchronize all processes before final timing
+  MPI_Barrier(MPI_COMM_WORLD);
+  total_end = MPI_Wtime();
+  
+  // Collect FLOPS and timing statistics
+  int64_t total_flops;
+  double max_computation_time;
+  
+  MPI_Reduce(&local_flops, &total_flops, 1, MPI_LONG_LONG_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+  MPI_Reduce(&computation_time, &max_computation_time, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+  
+  if (rank == 0) {
+    printf("%lld %.6f\n", total_flops, max_computation_time);
   }
 
   MPI_Finalize();
