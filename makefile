@@ -1,6 +1,6 @@
 # Makefile for HPC Convolution Assignment
 # 컴파일러 설정
-CC = gcc
+CC = mpicc
 CFLAGS = -O3
 
 # HPC 관련 설정
@@ -11,21 +11,9 @@ SLURM_FLAGS = -lm
 TARGET = conv
 SOURCE = conv.c
 
-# 기본 타겟 (로컬 디버그 버전)
-all: $(TARGET)
-
-# HPC 버전 (OpenMP 포함)
-hpc: $(SOURCE)
-	@echo "Building HPC version with OpenMP"
-	@$(CC) $(CFLAGS) $(OMP_FLAGS) $(SOURCE) -o $(TARGET)_hpc $(SLURM_FLAGS)
-
-build-mpi: $(SOURCE)
-	@echo "Building MPI version"
-	@mpicc -o $(TARGET) $(SOURCE)
-
 build-mpi-omp: $(SOURCE)
 	@echo "Building MPI version"
-	@mpicc $(OMP_FLAGS) -o $(TARGET) $(SOURCE) $(SLURM_FLAGS)
+	@$(CC) $(OMP_FLAGS) -o $(TARGET) $(SOURCE) $(SLURM_FLAGS)
 
 # Test(local)
 test: $(TARGET)
@@ -50,6 +38,11 @@ bench-thread: build-mpi-omp
 	@echo "Running thread benchmark"
 	@chmod 744 bench_thread.sh
 	@./bench_thread.sh
+
+bench-both: build-mpi-omp
+	@echo "Running thread benchmark"
+	@chmod 744 bench_both.sh
+	@./bench_both.sh
 
 stress: build-mpi-omp
 	@echo "Running stress test"

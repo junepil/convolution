@@ -1,38 +1,35 @@
 #!/bin/bash
-mkdir -p bench
+mkdir -p bench/core
 
 # Define test parameters
 CORES=(1 2 4 8 16 32 64 128 256)
 KERNELS=(3 5 7 9)
-STRIDES=(1 2 4 8)
 
 echo "Generating comprehensive benchmark tests..."
 
 # Test all combinations of cores, kernels, and strides
 for cores in "${CORES[@]}"; do
   for kernel in "${KERNELS[@]}"; do
-    for stride in "${STRIDES[@]}"; do
-      echo "Generating Slurm script for ${cores} cores, ${kernel}x${kernel} kernel, stride ${stride}x${stride}"
-      
-      cat > "bench/${cores}cores_${kernel}x${kernel}k_${stride}x${stride}s.sh" << EOF
+    echo "Generating Slurm script for ${cores} cores, ${kernel}x${kernel} kernel"
+    
+    cat > "bench/core/${cores}cores_${kernel}x${kernel}k.sh" << EOF
 #!/bin/bash
-#SBATCH --job-name=bench_${cores}_${kernel}_${stride}
-#SBATCH --nodes=1
-#SBATCH --ntasks-per-node=${cores}
-#SBATCH --cpus-per-task=4
+#SBATCH --job-name=bench_${cores}_${kernel}
+#SBATCH --nodes=${cores}
+#SBATCH --ntasks-per-node=1
+#SBATCH --cpus-per-task=1
 #SBATCH --ntasks=${cores}
 #SBATCH --mem=128G
 #SBATCH --time=00:15:00
-#SBATCH --output=bench/${cores}cores_${kernel}x${kernel}k_${stride}x${stride}s.out
+#SBATCH --output=bench/core/${cores}cores_${kernel}x${kernel}k.out
 
-srun ./conv -W 10000 -H 10000 -kH ${kernel} -kW ${kernel} -sH ${stride} -sW ${stride}
+srun ./conv -W 10000 -H 10000 -kH ${kernel} -kW ${kernel}
 EOF
-      chmod +x "bench/${cores}cores_${kernel}x${kernel}k_${stride}x${stride}s.sh"
-      echo "Submitting bench for ${cores} cores, ${kernel}x${kernel} kernel, stride ${stride}x${stride}"
-      sbatch "bench/${cores}cores_${kernel}x${kernel}k_${stride}x${stride}s.sh"
-    done
+    chmod +x "bench/core/${cores}cores_${kernel}x${kernel}k.sh"
+    echo "Submitting bench for ${cores} cores, ${kernel}x${kernel} kernel"
+    sbatch "bench/core/${cores}cores_${kernel}x${kernel}k.sh"
   done
 done
 
 echo "All benchmark tests submitted!"
-echo "Total tests: $((${#CORES[@]} * ${#KERNELS[@]} * ${#STRIDES[@]}))"
+echo "Total tests: $((${#CORES[@]} * ${#KERNELS[@]}))"
