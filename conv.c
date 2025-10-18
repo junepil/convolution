@@ -154,7 +154,8 @@ Matrix conv2d(
 int main(int argc, char** argv) {
   int rank, size;
   double tik, tok, total_start, total_end;
-  double computation_time, local_flops;
+  double computation_time;
+  int64_t proc_flops = 0;
 
   MPI_Init(&argc, &argv);
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -200,6 +201,7 @@ int main(int argc, char** argv) {
     tok = MPI_Wtime();
     
     computation_time = tok - tik;
+    proc_flops = local_flops;
 
     MPI_Send(local_output.data[0], expected_elements, MPI_FLOAT, 0, DATA_TAG, MPI_COMM_WORLD);
     free_matrix(local_input);
@@ -277,6 +279,7 @@ int main(int argc, char** argv) {
 
         tok = MPI_Wtime();
         computation_time = tok - tik;
+        proc_flops += local_flops;
 
         free_matrix(local_input);
         free_matrix(local_output);
@@ -314,7 +317,7 @@ int main(int argc, char** argv) {
   int64_t total_flops;
   double max_computation_time;
   
-  MPI_Reduce(&local_flops, &total_flops, 1, MPI_LONG_LONG_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+  MPI_Reduce(&proc_flops, &total_flops, 1, MPI_LONG_LONG_INT, MPI_SUM, 0, MPI_COMM_WORLD);
   MPI_Reduce(&computation_time, &max_computation_time, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
   
   if (rank == 0) {
