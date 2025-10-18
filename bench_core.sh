@@ -2,9 +2,9 @@
 mkdir -p bench
 
 # Define test parameters
-CORES=(1 2 4 8 16 32 64 128)
+CORES=(1 2 4 8 16 32 64 128 256)
 KERNELS=(3 5 7 9)
-STRIDES=(1 2 3 4)
+STRIDES=(1 2 4 8)
 
 echo "Generating comprehensive benchmark tests..."
 
@@ -19,6 +19,7 @@ for cores in "${CORES[@]}"; do
 #SBATCH --job-name=bench_${cores}_${kernel}_${stride}
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=${cores}
+#SBATCH --cpus-per-task=4
 #SBATCH --ntasks=${cores}
 #SBATCH --mem=128G
 #SBATCH --time=00:15:00
