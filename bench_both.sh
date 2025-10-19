@@ -22,6 +22,8 @@ for cores in "${CORES[@]}"; do
 #SBATCH --time=00:15:00
 #SBATCH --output=bench/both/${cores}cores_${threads}.out
 
+export OMP_NUM_THREADS=${threads}
+
 srun ./conv -W 10000 -H 10000 -kH 3 -kW 3
 EOF
     chmod +x "bench/both/${cores}cores_${threads}threads.sh"

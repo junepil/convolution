@@ -4,7 +4,7 @@ CC = mpicc
 CFLAGS = -O3
 
 # HPC 관련 설정
-OMP_FLAGS = -DHPC -fopenmp
+OMP_FLAGS = -DOMP -fopenmp
 SLURM_FLAGS = -lm
 
 # 타겟 파일들

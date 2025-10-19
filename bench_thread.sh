@@ -20,7 +20,8 @@ for threads in "${THREADS[@]}"; do
 #SBATCH --mem=128G
 #SBATCH --time=00:15:00
 #SBATCH --output=bench/thread/threads_${threads}.out
-export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
+
+export OMP_NUM_THREADS=${threads}
 
 srun ./conv -W ${FIXED_MATRIX_SIZE} -H ${FIXED_MATRIX_SIZE} -kH ${FIXED_KERNEL_SIZE} -kW ${FIXED_KERNEL_SIZE} -sH ${FIXED_STRIDE} -sW ${FIXED_STRIDE}
 EOF

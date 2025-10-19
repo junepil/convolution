@@ -108,12 +108,12 @@ Matrix conv2d(
   int64_t total_flops = 0;
   
   // The main loop now starts from the corrected `first_i`.
-#ifdef HPC
+#ifdef OMP
   #pragma omp parallel reduction(+:total_flops)
 #endif
   for (int64_t i = start_offset; i < input.H; i += stride_height) {
 
-#ifdef HPC
+#ifdef OMP
   #pragma omp for schedule(static, 16) nowait
 #endif 
     for (int64_t j = 0; j < input.W; j += stride_width) {

@@ -22,12 +22,14 @@ Requirements:
 - OpenMP support from your compiler
 
 In kaya you can build the program using the following
+
 ```sh
 module load gcc openmpi
 make build-mpi-omp
 ```
 
 And in setonix
+
 ```sh
 make build-mpi-omp
 ```
@@ -74,12 +76,12 @@ Program CLI flags (provided by `conv.c`):
 
 - `-H <int>`: input height
 - `-W <int>`: input width
-- `--kH <int>`: kernel height
-- `--kW <int>`: kernel width
-- `--sH <int>`: stride height (default 1)
-- `--sW <int>`: stride width (default 1)
-- `-f <path>`: input matrix file (optional; otherwise random)
-- `-g <path>`: kernel matrix file (optional; otherwise random)
+- `-kH <int>`: kernel height
+- `-kW <int>`: kernel width
+- `-sH <int>`: stride height (default 1)
+- `-sW <int>`: stride width (default 1)
+- `-f <path>`: input matrix file (optional)
+- `-g <path>`: kernel matrix file (optional)
 - `-o <path>`: output file to write resulting matrix (optional)
 
 Output format (stdout):
@@ -118,6 +120,5 @@ Each helper submits a set of SLURM jobs via `srun` and writes outputs into per-s
 
 ## Notes
 
-- Use `--mem` and/or `--mem-per-cpu` in your SLURM scripts to avoid OOM on very large matrices; memory use can be substantial (input + output + working buffers).
+- Use `--mem` or `--mem-per-cpu` in your SLURM scripts to avoid OOM on very large matrices; memory use can be substantial (input + output + working buffers).
 - On systems without `mpicc` in `PATH`, load your site’s MPI module (e.g., `openmpi/5.0.5`) or use vendor wrappers (`cc/CC/ftn` on Cray, `mpiicc` with Intel MPI).
-
