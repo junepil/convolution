@@ -7,5 +7,7 @@ conv
 *.pdf
 *.png
 *.log
-performance
+*.zip
+python_scripts
+bench
 stress
