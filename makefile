@@ -1,96 +1,61 @@
 # Makefile for HPC Convolution Assignment
 # 컴파일러 설정
-CC = gcc
+CC = mpicc
 CFLAGS = -O3
 
 # HPC 관련 설정
-HPC_FLAGS = -DHPC -fopenmp
+OMP_FLAGS = -DOMP -fopenmp
 SLURM_FLAGS = -lm
 
 # 타겟 파일들
 TARGET = conv
 SOURCE = conv.c
 
-# 기본 타겟 (로컬 디버그 버전)
-all: $(TARGET)
+build-mpi-omp: $(SOURCE)
+	@echo "Building MPI version"
+	@$(CC) $(OMP_FLAGS) -o $(TARGET) $(SOURCE) $(SLURM_FLAGS)
 
-# 일반 버전 (OpenMP 없음)
-$(TARGET): $(SOURCE)
-	@echo "Building standard version"
-	@$(CC) $(CFLAGS) $(SOURCE) -o $(TARGET)
-
-# HPC 버전 (OpenMP 포함)
-hpc: $(SOURCE)
-	@echo "Building HPC version with OpenMP"
-	@$(CC) $(CFLAGS) $(HPC_FLAGS) $(SOURCE) -o $(TARGET)_hpc $(SLURM_FLAGS)
-
-# 테스트 실행 (로컬)
+# Test(local)
 test: $(TARGET)
-	@echo "Running local test"
+	@echo "Running test"
 	@./$(TARGET) -W 100 -H 100 -kH 3 -kW 3 -o 100x100_3x3.txt
 
-# 포괄적 테스트 실행 (Python 테스트 스위트)
-test-comprehensive: $(TARGET)
-	@echo "Running comprehensive test suite"
-	@cd test && python3 main.py
+test-mpi: mpi
+	@echo "Running MPI test"
+	@mpiexec -n 4 $(TARGET) -f test/data/f4.txt -g test/data/g4.txt -o mpi_test4.txt
 
-# 포괄적 테스트 실행 (데이터 보존)
-test-comprehensive-keep: $(TARGET)
-	@echo "Running comprehensive test suite (keeping test data)"
-	@cd test && python3 main.py --keep-data
+test-mpi-omp: mpi-omp
+	@echo "Running MPI & OpenMP test"
+	@mpiexec -n 4 $(TARGET) -W 100 -H 100 -kH 3 -kW 3 -sH 2 -sW 2 -o mpi_hpc_test.txt
 
-# 빠른 테스트 (기본 기능만)
-test-quick: $(TARGET)
-	@echo "Running quick functionality test"
-	@./$(TARGET) -f f0.txt -g g0.txt -o quick_test_output.txt
-	@echo "Quick test completed - check quick_test_output.txt"
+# Bench(remote)
+bench-core: build-mpi-omp
+	@echo "Running core benchmark"
+	@chmod 744 bench_core.sh
+	@./bench_core.sh
 
-# HPC 테스트 실행
-test-hpc: hpc
-	@echo "Generating Slurm script for 10000x10000 hpc test"
-	@echo "#!/bin/bash" > job_100.sh
-	@echo "#SBATCH --job-name=conv2d" >> job_100.sh
-	@echo "#SBATCH --cpus-per-task=1" >> job_100.sh
-	@echo "#SBATCH --time=00:10:00" >> job_100.sh
-	@echo "#SBATCH --partition=cits3402" >> job_100.sh
-	@echo "#SBATCH --output=test_result.txt" >> job_100.sh
-	@echo "" >> job_100.sh
-	@echo "module load gcc" >> job_100.sh
-	@echo "./$(TARGET)_hpc -W 10000 -H 10000 -kH 3 -kW 3 -o test.txt" >> job_100.sh
-	sbatch job_100.sh
-# Slurm 작업 제출용 스크립트 생성
-stress-hpc: hpc
-	@chmod +x generate_stress.sh
-	@./generate_stress.sh
+bench-thread: build-mpi-omp
+	@echo "Running thread benchmark"
+	@chmod 744 bench_thread.sh
+	@./bench_thread.sh
 
-parallel-hpc: hpc
-	@chmod +x generate_parallel.sh
-	@./generate_parallel.sh
+bench-both: build-mpi-omp
+	@echo "Running thread benchmark"
+	@chmod 744 bench_both.sh
+	@./bench_both.sh
+
+stress: build-mpi-omp
+	@echo "Running stress test"
+	@chmod 744 stress.sh
+	@./stress.sh
 
 # 정리
 clean:
 	@echo "Cleaning up..."
 	@rm -f $(TARGET) $(TARGET)_hpc
-	@rm -f *.o *.out output*.txt job_*.sh
-	@rm -f result*.txt output*.log
+	@rm -f *.o *.out
+	@rm -rf stress bench thread_bench
 	@rm -f gmon.out
-	@rm -f quick_test_output.txt
-	@rm -rf test/test_data
-
-# 도움말
-help:
-	@echo "Available targets:"
-	@echo "  all                - Build standard version (no OpenMP)"
-	@echo "  hpc                - Build HPC version with OpenMP"
-	@echo "  test               - Run basic local test"
-	@echo "  test-quick         - Run quick functionality test with existing files"
-	@echo "  test-comprehensive - Run comprehensive test suite (all edge cases)"
-	@echo "  test-comprehensive-keep - Run comprehensive test keeping generated data"
-	@echo "  test-hpc           - Run HPC test on HPC cluster"
-	@echo "  stress-hpc         - Run stress test on HPC"
-	@echo "  parallel-hpc       - Run parallel test on HPC"
-	@echo "  clean              - Remove all generated files"
-	@echo "  help               - Show this help"
 
 # 가상 타겟 (파일이 아닌 명령)
-.PHONY: all hpc test test-quick test-comprehensive test-comprehensive-keep test-hpc benchmark slurm-script clean help parallel-hpc stress-hpc
+.PHONY: all hpc test
